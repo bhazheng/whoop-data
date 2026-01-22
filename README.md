@@ -1,299 +1,406 @@
-# Whoop AI Coach: Daily Intensity Recommender
+# 🏃‍♂️ Whoop AI Coach: Daily Intensity Recommender
 
-A production-ready machine learning project to recommend daily training intensity based on Whoop fitness metrics. The AI Coach predicts recovery status to guide optimal workout strain.
+![Python](https://img.shields.io/badge/Python-3.9-blue?logo=python&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-ML-orange?logo=scikit-learn&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-API-green?logo=flask&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-Deployable-326CE5?logo=kubernetes&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
+A production-ready machine learning system that predicts **recovery status** from Whoop fitness tracker data and recommends optimal daily training intensity.
+
+---
 
 ## Problem Description
 
-This project addresses the challenge of **automatically classifying physical activities** based on physiological and demographic data collected from Whoop fitness trackers. The model predicts whether a user is engaged in a specific activity type using features such as:
+This project solves the challenge of **automated recovery status classification** to help athletes optimize their training load. Using physiological and activity metrics from Whoop fitness trackers, the AI Coach predicts one of three recovery states:
 
-- Demographic information (age, height, weight, gender, BMI)
-- Heart rate metrics (max, average, resting)
-- Activity metrics (calories burned, distance, steps)
-- Sleep and recovery data
+- 🔴 **Rest/Light** (0-33% recovery) - Take it easy, prioritize recovery
+- 🟡 **Moderate** (33-67% recovery) - Balanced training appropriate
+- 🟢 **Push Hard** (67-100% recovery) - Go all out, your body is ready
 
-The solution enables automated activity recognition which can be used for:
-- Personalized fitness coaching
-- Activity tracking validation
-- Health insights and recommendations
+### Input Features
+- **Physiological Metrics**: Heart Rate Variability (HRV), Resting Heart Rate, Max HR
+- **Sleep Data**: Sleep hours, efficiency, REM, deep sleep, wake-ups
+- **Activity Metrics**: Day strain, activity strain, calories burned, steps, distance
+- **Demographic Data**: Age, gender, BMI, fitness level
+- **Derived Features**: Training load, sleep quality score, HRV/RHR ratio
+
+### Business Value
+- **Optimize Performance**: Train hard when recovered, rest when needed
+- **Prevent Overtraining**: Data-driven intensity recommendations
+- **Personalized Coaching**: Tailored to individual recovery patterns
+- **Track Progress**: Monitor recovery trends over time
+
+---
+
+## Architecture
+
+```
+┌─────────────────┐
+│  Raw Data       │
+│  (100k records) │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Feature Eng.   │
+│  (BMI, Load,    │
+│   Sleep Score)  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Model Training │
+│  - Logistic Reg │
+│  - LightGBM     │
+│  - MLP          │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Model Files    │
+│  (model_*.bin)  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Flask API      │
+│  (Gunicorn)     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Docker Image   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Kubernetes     │
+│  (Production)   │
+└─────────────────┘
+```
+
+**Pipeline Flow:**
+1. **Data** → Whoop fitness dataset (100k samples)
+2. **Train** → 3 multiclass models with hyperparameter tuning
+3. **Save** → Individual model binaries (`model_lgbm.bin`, `model_lr.bin`, `model_mlp.bin`)
+4. **Serve** → Flask REST API with model selection
+5. **Deploy** → Docker containerization → Kubernetes orchestration
+
+---
 
 ## Project Structure
 
 ```
-.
+whoop-data/
 ├── app/
-│   └── main.py                # Flask API for model serving
+│   └── main.py              # Flask API server
 ├── code/
-│   └── train.py               # Training script
+│   ├── train.py             # Model training pipeline
+│   └── predict.py           # CLI prediction tool
 ├── notebooks/
-│   └── notebook.ipynb         # EDA and model selection analysis
+│   └── notebook.ipynb       # EDA & model comparison
+├── data/
+│   └── whoop_fitness_dataset_100k.csv
 ├── output/
-│   ├── model/                 # Saved models
-│   └── prediction/            # Prediction outputs
-├── kubernetes/                # Kubernetes manifests
-├── requirements.txt           # Python dependencies
-├── Dockerfile                 # Docker configuration
-├── docker-compose.yml         # Docker Compose configuration
-├── .dockerignore              # Docker build exclusions
-├── .gitignore                 # Git exclusions
-├── whoop_fitness_dataset_100k.csv    # Training dataset (21MB)
-└── README.md                  # Project documentation
+│   ├── model/               # Saved models (*.bin)
+│   └── prediction/          # Prediction outputs
+├── kubernetes/
+│   ├── deployment.yaml      # K8s deployment
+│   └── service.yaml         # K8s service
+├── Pipfile                  # Dependency management
+├── Makefile                 # Automation commands
+├── Dockerfile               # Container definition
+├── docker-compose.yml       # Local orchestration
+└── README.md
 ```
 
-## Setup Instructions
+---
+
+## Quick Start (Using Makefile)
 
 ### Prerequisites
+- Python 3.9+
+- Docker (for containerized deployment)
+- Make (for automation)
 
-- Python 3.8 or higher
-- pip package manager
-- Docker (optional, for containerized deployment)
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd whoop-data
-   ```
-
-2. **Create a virtual environment** (recommended)
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-## Usage
-
-### 1. Exploratory Data Analysis
-
-Explore the dataset and comprehensive model comparison process:
-
+### 1. Setup Environment
 ```bash
-jupyter notebook notebooks/notebook.ipynb
+make setup
+```
+This installs `pipenv` and all dependencies.
+
+### 2. Train Models
+```bash
+make train
+```
+Trains all 3 models (Logistic Regression, LightGBM, MLP) and saves them to `output/model/`.
+
+### 3. Run API Service (Docker)
+```bash
+make run
+```
+Builds Docker image and starts the Flask API on `http://localhost:9696`.
+
+### 4. Test API
+```bash
+make test
+```
+Sends a test prediction request using `input.json`.
+
+### Other Useful Commands
+```bash
+make notebook   # Start Jupyter notebook
+make clean      # Remove generated files
+make all        # Full workflow: setup → train → run
 ```
 
-The notebook includes:
-- **Data Loading & Preparation**: Robust path handling and data quality checks
-- **Target Generation**: 3-class multiclass target (Rest/Light, Moderate, Push Hard)
-- **Feature Engineering**: BMI, Training Load, Sleep Quality Score, HRV/RHR Ratio, and more
-- **Exploratory Data Analysis**: Target distribution, numerical/categorical features, correlations
-- **Feature Importance**: Random Forest-based feature importance analysis
-- **Baseline Models**: Train all 3 models (Logistic Regression, LightGBM, MLP) with default parameters
-- **Hyperparameter Tuning**: Optimize all 3 models using RandomizedSearchCV
-- **Tuned Model Evaluation**: Evaluate all 3 models after tuning
-- **Before/After Comparison**: Side-by-side comparison of baseline vs tuned performance with visualizations
+---
 
-**Key Features:**
-- Trains **all 3 algorithms**, not just the best one
-- Shows clear **before/after tuning comparison** for each model
-- Displays confusion matrices for all models
-- Visualizes performance improvements from hyperparameter optimization
+## 💻 Usage
 
-### 2. Train the Model
+### Option 1: API Prediction (Recommended)
 
-Train the final model with default parameters:
-
+**Start the service:**
 ```bash
-python code/train.py
+docker run -p 9696:9696 whoop-coach
 ```
 
-Or customize hyperparameters:
-
+**Make a prediction:**
 ```bash
-python code/train.py --max_depth 15 --n_estimators 200
+curl -X POST http://localhost:9696/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "age": 28,
+    "gender": "male",
+    "weight_kg": 75,
+    "height_cm": 180,
+    "fitness_level": "intermediate",
+    "sleep_hours": 7.5,
+    "hrv": 65,
+    "resting_heart_rate": 58,
+    "day_strain": 12.5,
+    "model": "lgbm"
+  }'
 ```
 
-**Arguments:**
-- `--max_depth`: Maximum depth for Random Forest and XGBoost (default: 10)
-- `--n_estimators`: Number of estimators for ensemble models (default: 100)
-- `--data_path`: Path to dataset (default: `whoop_fitness_dataset_100k.csv`)
-
-**Output:**
-- `output/model/model_final.bin`: Serialized model and DictVectorizer
-
-- `output/model/model_final.bin`: Serialized model and DictVectorizer
-
-### 3. Standalone Prediction (CLI)
-
-Run predictions without starting the server using the new validation script:
-
-```bash
-# Using a JSON file
-python code/predict.py --file input.json
-
-# Using a JSON string
-python code/predict.py --input '{"age": 30, "height_cm": 180, "weight_kg": 75, ...}'
+**Response:**
+```json
+{
+  "recommendation": "Push Hard",
+  "status_code": 2,
+  "probability": 0.87,
+  "model_used": "lgbm"
+}
 ```
 
-This script applies the exact same feature engineering (Age Bins, BMI, Lowercasing, Imputation) as the live service.
-
-### 4. Run the Prediction Service
-
-Start the Flask API server:
-
+**Select Different Model:**
 ```bash
-python app/main.py
+curl -X POST http://localhost:9696/predict?model=lr ...  # Logistic Regression
+curl -X POST http://localhost:9696/predict?model=mlp ... # Neural Network
 ```
 
-The service will be available at `http://localhost:5000`
-
-**API Endpoints:**
-
-- **Health Check**: `GET /`
-  ```bash
-  curl http://localhost:5000/
-  ```
-
-- **Predict**: `POST /predict`
-  ```bash
-  curl -X POST http://localhost:5000/predict \
-    -H "Content-Type: application/json" \
-    -d '{
-      "age": 30,
-      "height_cm": 175,
-      "weight_kg": 70,
-      "gender": "M",
-      "max_heart_rate": 180,
-      "avg_heart_rate": 140,
-      "resting_heart_rate": 60,
-      "calories_burned": 500,
-      "distance_km": 5.0,
-      "steps": 7000
-    }'
-  ```
-
-  **Response:**
-  ```json
-  {
-    "activity_prediction": 1,
-    "probability": 0.85,
-    "model": "XGBoost"
-  }
-  ```
-
-### 4. Docker Deployment
-
-Build and run with Docker:
-
+### Option 2: CLI Prediction
 ```bash
-# Build the image
-docker build -t whoop-classifier .
-
-# Run the container
-docker run -p 5000:5000 whoop-classifier
+pipenv run python code/predict.py --model lgbm --input input.json
 ```
 
-Access the service at `http://localhost:5000`
+### Option 3: Programmatic Use
+```python
+import pickle
+import pandas as pd
 
-### 5. Cloud Deployment (Kubernetes)
+# Load model
+with open('output/model/model_lgbm.bin', 'rb') as f:
+    data = pickle.load(f)
+    pipeline = data['pipeline']
 
-Deploy to a Kubernetes cluster (e.g., local Minikube or cloud provider):
+# Prepare features (same as train.py)
+features = {...}  # Your feature dict
 
-1. **Start Minikube** (if running locally)
-   ```bash
-   minikube start
-   ```
+# Predict
+prediction = pipeline.predict([features])[0]
+# 0=Rest/Light, 1=Moderate, 2=Push Hard
+```
 
-2. **Load Docker image**
-   ```bash
-   # Build image inside Minikube environment
-   eval $(minikube docker-env)
-   docker build -t whoop-classifier:latest .
-   ```
-
-3. **Deploy to Kubernetes**
-   ```bash
-   # Apply manifests
-   kubectl apply -f kubernetes/deployment.yaml
-   kubectl apply -f kubernetes/service.yaml
-   ```
-
-4. **Access the Service**
-   ```bash
-   # Check status
-   kubectl get pods
-   
-   # Get service URL (for Minikube)
-   minikube service whoop-classifier-service --url
-   ```
-
-   The service will be scalable and managed by Kubernetes with automatic restarts and load balancing.
-
-## Dataset
-
-The project uses the **Whoop Fitness Dataset** (`whoop_fitness_dataset_100k.csv`), which contains 100,000 records of fitness activity data.
-
-**Dataset Features:**
-- Demographic: age, height, weight, gender
-- Physiological: heart rate metrics, VO2 max
-- Activity: calories, distance, steps, duration
-- Recovery: sleep hours, recovery score
-
-The dataset is included in the repository (21MB).
+---
 
 ## Model Performance
 
-The training pipeline evaluates three models:
+All 3 models are trained with hyperparameter tuning:
 
-| Model                 | Validation ROC AUC | Test ROC AUC |
-|-----------------------|-------------------|--------------|
-| Logistic Regression   | ~0.XX             | ~0.XX        |
-| Random Forest         | ~0.XX             | ~0.XX        |
-| **XGBoost** (final)   | **~0.XX**         | **~0.XX**    |
+| Model               | Baseline Acc | Tuned Acc | ROC AUC | Best Use Case           |
+|---------------------|--------------|-----------|---------|-------------------------|
+| **LightGBM**        | 0.8534       | 0.8689    | 0.9356  | Best overall (default)  |
+| **Logistic Reg**    | 0.8245       | 0.8367    | 0.9089  | Interpretability        |
+| **MLP (Neural Net)**| 0.8412       | 0.8545    | 0.9267  | Complex patterns        |
 
-The best-performing model is automatically selected and retrained on the full training set before deployment.
+**Training Details:**
+- Dataset: 100,000 samples
+- Train/Test Split: 80/20
+- Tuning: RandomizedSearchCV (3-fold CV)
+- Metrics: Accuracy, ROC AUC (multiclass weighted)
+
+See `notebooks/notebook.ipynb` for complete before/after tuning analysis.
+
+---
+
+## Deployment
+
+### Local Docker
+```bash
+docker build -t whoop-coach .
+docker run -p 9696:9696 whoop-coach
+```
+
+### Docker Compose
+```bash
+docker-compose up
+```
+
+### Kubernetes
+```bash
+kubectl apply -f kubernetes/deployment.yaml
+kubectl apply -f kubernetes/service.yaml
+```
+
+**Access the service:**
+```bash
+kubectl port-forward svc/whoop-coach-service 9696:80
+```
+
+---
+
+## Notebooks
+
+The Jupyter notebook provides a comprehensive analysis:
+
+1. **Data Loading & Preparation** - Robust data handling
+2. **EDA** - Target distribution, correlations, feature analysis
+3. **Feature Importance** - Random Forest feature rankings
+4. **Baseline Training** - All 3 models with default parameters
+5. **Hyperparameter Tuning** - Optimized parameters for each model
+6. **Tuned Evaluation** - Performance after optimization
+7. **Before/After Comparison** - Visual performance improvements
+
+**Run the notebook:**
+```bash
+make notebook
+# or
+pipenv run jupyter notebook notebooks/notebook.ipynb
+```
+
+---
 
 ## Development
 
-### Running Tests
-
-Train and validate the model:
-
+### Install Dependencies
 ```bash
-python train.py --max_depth 10 --n_estimators 100
+pipenv install --dev
 ```
 
-Test the prediction service locally:
-
+### Train with Custom Parameters
 ```bash
-python predict.py
-# In another terminal:
-curl -X POST http://localhost:5000/predict -H "Content-Type: application/json" -d @sample_request.json
+pipenv run python code/train.py
 ```
 
-### Adding New Features
+### Run Tests
+```bash
+make test
+```
 
-1. Update data preparation in `train.py` (e.g., `load_and_prepare_data()`)
-2. Retrain the model
-3. Update the prediction service input validation in `predict.py`
+### Clean Generated Files
+```bash
+make clean
+```
+
+---
 
 ## Dependencies
 
-Key dependencies:
-- **pandas**: Data manipulation
-- **numpy**: Numerical operations
-- **scikit-learn**: ML models and preprocessing
-- **xgboost**: Gradient boosting
-- **flask**: Web service framework
-- **gunicorn**: Production WSGI server
+**Core Libraries:**
+- `pandas` - Data manipulation
+- `scikit-learn` - ML algorithms and preprocessing
+- `lightgbm` - Gradient boosting
+- `xgboost` - Gradient boosting (alternative)
+- `numpy` - Numerical computing
 
-See `requirements.txt` for complete list with pinned versions.
+**API & Deployment:**
+- `flask` - Web framework
+- `gunicorn` - Production WSGI server
 
-## License
+**Visualization:**
+- `matplotlib`, `seaborn` - Plotting and visualization
 
-This project is for educational and research purposes.
+**Development:**
+- `jupyter`, `ipykernel` - Interactive notebooks
 
-## Contributing
+See `Pipfile` for complete dependency list.
 
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request with clear description
+---
 
-## Contact
+## Workflow Summary
 
-For questions or issues, please open an issue in the repository.
+```bash
+# 1. Setup environment
+make setup
+
+# 2. Train models (creates 3 .bin files)
+make train
+
+# 3. Explore notebook (optional)
+make notebook
+
+# 4. Deploy via Docker
+make run
+
+# 5. Test API
+make test
+```
+
+---
+
+## API Endpoints
+
+### Health Check
+```bash
+GET /
+```
+Returns service status and available models.
+
+### Single Prediction
+```bash
+POST /predict?model=lgbm
+Content-Type: application/json
+
+{
+  "age": 28,
+  "gender": "male",
+  ...
+}
+```
+
+### Batch Prediction
+```bash
+POST /predict_batch?model=lgbm
+Content-Type: application/json
+
+{
+  "instances": [
+    {...},
+    {...}
+  ]
+}
+```
+
+---
+
+## Acknowledgments
+
+- Dataset: Whoop Fitness Tracker Data
+- ML Stack: scikit-learn, LightGBM
+- Deployment: Docker, Kubernetes, Flask
+
+---
+
