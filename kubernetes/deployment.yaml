@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whoop-classifier
+  labels:
+    app: whoop-classifier
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: whoop-classifier
+  template:
+    metadata:
+      labels:
+        app: whoop-classifier
+    spec:
+      containers:
+      - name: whoop-classifier
+        image: whoop-classifier:latest
+        imagePullPolicy: IfNotPresent  # Use local image for Minikube
+        ports:
+        - containerPort: 5000
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 15
+          periodSeconds: 20

@@ -1,0 +1,16 @@
+{
+    "age": 30,
+    "gender": "Male",
+    "height_cm": 180,
+    "weight_kg": 75,
+    "resting_heart_rate": 50,
+    "hrv": 60,
+    "sleep_efficiency": 90,
+    "deep_sleep_hours": 1.5,
+    "rem_sleep_hours": 2.0,
+    "wake_ups": 1,
+    "day_strain": 10,
+    "activity_strain": 5,
+    "date": "2023-10-27",
+    "workout_time_of_day": null
+}
